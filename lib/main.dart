@@ -17,7 +17,7 @@ class HappyHoursApp extends StatelessWidget {
       title: 'Happy Hours',
       theme: ThemeData(
         primarySwatch: Colors.blue,
-        scaffoldBackgroundColor: Colors.yellow[50],
+        scaffoldBackgroundColor: Colors.white,
       ),
       home: const HappyHourListPage(),
     );
@@ -25,52 +25,59 @@ class HappyHoursApp extends StatelessWidget {
 }
 
 class HappyHour {
-  /*final int id;
-  final String venueName;
+  final String happyHourId;
+  final String name;
   final String address;
-  final String times;
-  final String specials;
-  final double latitude;
-  final double longitude;*/
-
-  final String venueName;
-  final String address;
-  final String times;
-  final String specials;
+  final String openHours;
+  final String happyHourStart;
+  final String happyHourEnd;
+  final String telephone;
+  final String imageLink;
   final double latitude;
   final double longitude;
 
   HappyHour({
-    //required this.id,
-    required this.venueName,
+    required this.happyHourId,
+    required this.name,
     required this.address,
-    required this.times,
-    required this.specials,
+    required this.openHours,
+    required this.happyHourStart,
+    required this.happyHourEnd,
+    required this.telephone,
+    required this.imageLink,
     required this.latitude,
     required this.longitude,
   });
 
-  /*factory HappyHour.fromJson(Map<String, dynamic> json) {
-    return HappyHour(
-      id: json['id'],
-      venueName: json['venueName'],
-      address: json['address'],
-      times: json['times'],
-      specials: json['specials'],
-      latitude: double.parse(json['latitude'].toString()),
-      longitude: double.parse(json['longitude'].toString()),
-    );
-  }
-}*/
+  factory HappyHour.fromJson(Map<String, dynamic> json) {
+    const String baseUrl =
+        'https://customercallsapp.com/prod/customercallsapp/';
 
-factory HappyHour.fromJson(Map<String, dynamic> json) {
+    String image = json['image'] ?? '';
+    String logo = json['logo'] ?? '';
+    String selectedImageLink = '';
+
+    if (image.isNotEmpty) {
+      selectedImageLink =
+          image.startsWith('http') ? image : baseUrl + image;
+    } else if (logo.isNotEmpty) {
+      selectedImageLink =
+          logo.startsWith('http') ? logo : baseUrl + logo;
+    } else {
+      selectedImageLink = '';
+    }
+
     return HappyHour(
-      venueName: json['venueName'] ?? '',
-      address: json['address'] ?? '',
-      times: json['times'] ?? '',
-      specials: json['specials'] ?? '',
-      latitude: (json['latitude'] ?? 0.0).toDouble(),
-      longitude: (json['longitude'] ?? 0.0).toDouble(),
+      happyHourId: json['happy_hour_id'] ?? '',
+      name: json['Name'] ?? '',
+      address: json['Address'] ?? '',
+      openHours: json['Open_hours'] ?? '',
+      happyHourStart: json['Happy_hour_start'] ?? '',
+      happyHourEnd: json['Happy_hour_end'] ?? '',
+      telephone: json['Telephone'] ?? '',
+      imageLink: json['image_link'] ?? '', //selectedImageLink,
+      latitude: (json['latitude'] as num?)?.toDouble() ?? 0.0,
+      longitude: (json['longitude'] as num?)?.toDouble() ?? 0.0,
     );
   }
 }
@@ -94,32 +101,30 @@ class _HappyHourListPageState extends State<HappyHourListPage> {
 
   Future<void> fetchHappyHours() async {
     try {
-      final response = await http.get(Uri.parse('https://customercallsapp.com/prod/customercallsapp/happy_hours_api.php'));
-      print('Raw response: ${response.body}'); // Debug raw response
+      final response = await http
+          .get(Uri.parse(
+              'https://customercallsapp.com/prod/customercallsapp/happy_hours_api.php'))
+          .timeout(const Duration(seconds: 10));
+
       if (response.statusCode == 200) {
-        final dynamic data = jsonDecode(response.body);
-        List<dynamic> happyHoursJson;
-        if (data is List) {
-          happyHoursJson = data;
-        } else if (data is Map && data.containsKey('data')) {
-          happyHoursJson = data['data'];
-        } else {
-          throw Exception('Unexpected JSON format: expected a list or object with "data" field');
-        }
+        final List<dynamic> happyHoursJson = jsonDecode(response.body);
+        List<HappyHour> tempHappyHours = happyHoursJson
+            .map((json) => HappyHour.fromJson(json))
+            .toList();
+
         setState(() {
-          happyHours = happyHoursJson.map((json) => HappyHour.fromJson(json)).toList();
+          happyHours = tempHappyHours;
           errorMessage = null;
         });
       } else {
         setState(() {
-          errorMessage = 'Failed to fetch happy hours: Status ${response.statusCode}, body: ${response.body}';
+          errorMessage = 'Failed to load data: ${response.statusCode}';
         });
       }
     } catch (e) {
       setState(() {
-        errorMessage = 'Error fetching happy hours: $e';
+        errorMessage = 'Error fetching data: $e';
       });
-      print('Error fetching happy hours: $e');
     }
   }
 
@@ -127,19 +132,13 @@ class _HappyHourListPageState extends State<HappyHourListPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Happy Hours'),
+        title:
+            const Text('Happy Hours', style: TextStyle(color: Colors.black)),
+        backgroundColor: Colors.white,
+        elevation: 2,
         actions: [
           IconButton(
-            icon: const Icon(Icons.add),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const AddHappyHourPage()),
-              ).then((_) => fetchHappyHours());
-            },
-          ),
-          IconButton(
-            icon: const Icon(Icons.map),
+            icon: const Icon(Icons.map, color: Colors.black),
             onPressed: () {
               Navigator.push(
                 context,
@@ -153,79 +152,140 @@ class _HappyHourListPageState extends State<HappyHourListPage> {
       ),
       body: errorMessage != null
           ? Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(errorMessage!, style: const TextStyle(color: Colors.red, fontSize: 16)),
-                  const SizedBox(height: 20),
-                  ElevatedButton(
-                    onPressed: fetchHappyHours,
-                    child: const Text('Retry'),
-                  ),
-                ],
-              ),
-            )
+              child: Text(errorMessage!,
+                  style: const TextStyle(color: Colors.red)))
           : happyHours.isEmpty
-              ? const Center(child: Text('No happy hours found. Add one!', style: TextStyle(fontSize: 18)))
+              ? const Center(child: CircularProgressIndicator())
               : ListView.builder(
                   itemCount: happyHours.length,
                   itemBuilder: (context, index) {
-                    final happyHour = happyHours[index];
-                    return ListTile(
-                      title: Text(happyHour.venueName),
-                      subtitle: Text('${happyHour.times} - ${happyHour.specials}'),
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => HappyHourDetailsPage(happyHour: happyHour),
-                          ),
-                        );
-                      },
-                    );
+                    return HappyHourCard(
+                        happyHour: happyHours[index], index: index);
                   },
                 ),
     );
   }
 }
 
-class HappyHourDetailsPage extends StatelessWidget {
+class HappyHourCard extends StatelessWidget {
   final HappyHour happyHour;
+  final int index;
 
-  const HappyHourDetailsPage({super.key, required this.happyHour});
+  const HappyHourCard({super.key, required this.happyHour, required this.index});
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: Text(happyHour.venueName)),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
+    final double screenWidth = MediaQuery.of(context).size.width;
+    final bool isSmallScreen = screenWidth < 600;
+    final imageToShow = happyHour.imageLink.isNotEmpty
+        ? happyHour.imageLink
+        : 'https://picsum.photos/300/150?random=$index';
+
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) =>
+                HappyHourDetailsPage(happyHour: happyHour),
+          ),
+        );
+      },
+      child: Card(
+        elevation: 6,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        margin: EdgeInsets.all(isSmallScreen ? 8 : 16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Address: ${happyHour.address}', style: const TextStyle(fontSize: 18)),
-            const SizedBox(height: 10),
-            Text('Times: ${happyHour.times}', style: const TextStyle(fontSize: 18)),
-            const SizedBox(height: 10),
-            Text('Specials: ${happyHour.specials}', style: const TextStyle(fontSize: 18)),
-            const SizedBox(height: 20),
-            SizedBox(
-              height: 200,
-              child: FlutterMap(
-                options: MapOptions(
-                  initialCenter: LatLng(happyHour.latitude, happyHour.longitude),
-                  initialZoom: 15,
-                ),
+            // Image with gradient overlay and text
+            ClipRRect(
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+              child: Stack(
                 children: [
-                  TileLayer(
-                    urlTemplate: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-                    subdomains: ['a', 'b', 'c'],
+                  Image.network(
+                    imageToShow,
+                    width: double.infinity,
+                    height: isSmallScreen ? 180 : 250,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) => Container(
+                      height: isSmallScreen ? 180 : 250,
+                      color: Colors.grey[300],
+                      child: const Icon(Icons.image, size: 50, color: Colors.grey),
+                    ),
                   ),
-                  MarkerLayer(
-                    markers: [
-                      Marker(
-                        point: LatLng(happyHour.latitude, happyHour.longitude),
-                        child: const Icon(Icons.location_pin, color: Colors.red),
+                  Container(
+                    height: isSmallScreen ? 180 : 250,
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          Colors.transparent,
+                          Colors.black.withOpacity(0.6),
+                        ],
+                      ),
+                    ),
+                  ),
+                  Positioned(
+                    left: 12,
+                    bottom: 12,
+                    child: Text(
+                      happyHour.name,
+                      style: TextStyle(
+                        fontSize: isSmallScreen ? 18 : 22,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                        shadows: [
+                          Shadow(
+                            color: Colors.black.withOpacity(0.8),
+                            offset: const Offset(1, 1),
+                            blurRadius: 3,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            Padding(
+              padding: EdgeInsets.all(isSmallScreen ? 12 : 20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Address
+                  Row(
+                    children: [
+                      const Icon(Icons.location_on,
+                          color: Colors.redAccent, size: 18),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Text(
+                          happyHour.address,
+                          style: TextStyle(
+                            fontSize: isSmallScreen ? 13 : 15,
+                            color: Colors.black87,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+
+                  // Happy hour time
+                  Row(
+                    children: [
+                      const Icon(Icons.access_time,
+                          color: Colors.blueAccent, size: 18),
+                      const SizedBox(width: 4),
+                      Text(
+                        '${happyHour.happyHourStart} - ${happyHour.happyHourEnd}',
+                        style: TextStyle(
+                          fontSize: isSmallScreen ? 13 : 15,
+                          color: Colors.black87,
+                        ),
                       ),
                     ],
                   ),
@@ -239,112 +299,82 @@ class HappyHourDetailsPage extends StatelessWidget {
   }
 }
 
-class AddHappyHourPage extends StatefulWidget {
-  const AddHappyHourPage({super.key});
+class HappyHourDetailsPage extends StatelessWidget {
+  final HappyHour happyHour;
 
-  @override
-  State<AddHappyHourPage> createState() => _AddHappyHourPageState();
-}
-
-class _AddHappyHourPageState extends State<AddHappyHourPage> {
-  final _formKey = GlobalKey<FormState>();
-  final venueNameController = TextEditingController();
-  final addressController = TextEditingController();
-  final timesController = TextEditingController();
-  final specialsController = TextEditingController();
-
-  Future<Map<String, double>> geocodeAddress(String address) async {
-    try {
-      final response = await http.get(
-        Uri.parse('https://nominatim.openstreetmap.org/search?format=json&q=$address'),
-      );
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        if (data.isNotEmpty) {
-          return {
-            'latitude': double.parse(data[0]['lat']),
-            'longitude': double.parse(data[0]['lon']),
-          };
-        }
-      }
-      return {'latitude': 0.0, 'longitude': 0.0};
-    } catch (e) {
-      print('Error geocoding address: $e');
-      return {'latitude': 0.0, 'longitude': 0.0};
-    }
-  }
-
-  Future<void> submitHappyHour() async {
-    if (_formKey.currentState!.validate()) {
-      final coords = await geocodeAddress(addressController.text);
-      final happyHour = {
-        'venueName': venueNameController.text,
-        'address': addressController.text,
-        'times': timesController.text,
-        'specials': specialsController.text,
-        'latitude': coords['latitude'],
-        'longitude': coords['longitude'],
-      };
-      try {
-        final response = await http.post(
-          Uri.parse('https://customercallsapp.com/prod/customercallsapp/happy_hours_api.php'),
-          headers: {'Content-Type': 'application/json'},
-          body: jsonEncode(happyHour),
-        );
-        print('POST response: ${response.statusCode}, body: ${response.body}');
-        if (response.statusCode == 201) {
-          Navigator.pop(context);
-        } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Failed to submit: ${response.statusCode}, ${response.body}')),
-          );
-        }
-      } catch (e) {
-        print('Error submitting happy hour: $e');
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error submitting: $e')),
-        );
-      }
-    }
-  }
+  const HappyHourDetailsPage({super.key, required this.happyHour});
 
   @override
   Widget build(BuildContext context) {
+    final imageToShow = happyHour.imageLink.isNotEmpty
+        ? happyHour.imageLink
+        : 'https://picsum.photos/300/150?random=details';
+
     return Scaffold(
-      appBar: AppBar(title: const Text('Add Happy Hour')),
-      body: Padding(
+      appBar: AppBar(
+        title:
+            Text(happyHour.name, style: const TextStyle(color: Colors.black)),
+        backgroundColor: Colors.white,
+        elevation: 2,
+      ),
+      body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            children: [
-              TextFormField(
-                controller: venueNameController,
-                decoration: const InputDecoration(labelText: 'Venue Name'),
-                validator: (value) => value!.isEmpty ? 'Enter a venue name' : null,
+        child: Column(
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: Image.network(
+                imageToShow,
+                height: 200,
+                width: double.infinity,
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) => Container(
+                  height: 200,
+                  color: Colors.grey[300],
+                  child: const Icon(Icons.image,
+                      size: 50, color: Colors.grey),
+                ),
               ),
-              TextFormField(
-                controller: addressController,
-                decoration: const InputDecoration(labelText: 'Address'),
-                validator: (value) => value!.isEmpty ? 'Enter an address' : null,
+            ),
+            const SizedBox(height: 20),
+            Text('Address: ${happyHour.address}',
+                style: const TextStyle(fontSize: 16)),
+            Text('Open: ${happyHour.openHours}',
+                style: const TextStyle(fontSize: 16)),
+            Text(
+                'Happy Hours: ${happyHour.happyHourStart} - ${happyHour.happyHourEnd}',
+                style: const TextStyle(fontSize: 16)),
+            Text('Phone: ${happyHour.telephone}',
+                style: const TextStyle(fontSize: 16)),
+            const SizedBox(height: 20),
+            SizedBox(
+              height: 200,
+              child: FlutterMap(
+                options: MapOptions(
+                  initialCenter:
+                      LatLng(happyHour.latitude, happyHour.longitude),
+                  initialZoom: 15,
+                ),
+                children: [
+                  TileLayer(
+                    urlTemplate:
+                        'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+                    subdomains: ['a', 'b', 'c'],
+                  ),
+                  MarkerLayer(
+                    markers: [
+                      Marker(
+                        point: LatLng(
+                            happyHour.latitude, happyHour.longitude),
+                        child: const Icon(Icons.location_pin,
+                            color: Colors.red),
+                      ),
+                    ],
+                  ),
+                ],
               ),
-              TextFormField(
-                controller: timesController,
-                decoration: const InputDecoration(labelText: 'Happy Hour Times'),
-                validator: (value) => value!.isEmpty ? 'Enter times' : null,
-              ),
-              TextFormField(
-                controller: specialsController,
-                decoration: const InputDecoration(labelText: 'Specials'),
-                validator: (value) => value!.isEmpty ? 'Enter specials' : null,
-              ),
-              const SizedBox(height: 20),
-              ElevatedButton(
-                onPressed: submitHappyHour,
-                child: const Text('Submit'),
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
@@ -359,32 +389,30 @@ class MapPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Happy Hours Map')),
+      appBar: AppBar(
+        title:
+            const Text('Map View', style: TextStyle(color: Colors.black)),
+        backgroundColor: Colors.white,
+        elevation: 2,
+      ),
       body: FlutterMap(
         options: MapOptions(
-          initialCenter: LatLng(37.7749, -122.4194), // Default: San Francisco
+          initialCenter: LatLng(13.7563, 100.5018),
           initialZoom: 12,
         ),
         children: [
           TileLayer(
-            urlTemplate: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+            urlTemplate:
+                'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
             subdomains: ['a', 'b', 'c'],
           ),
           MarkerLayer(
             markers: happyHours
+                .where((hh) => hh.latitude != 0 && hh.longitude != 0)
                 .map((hh) => Marker(
                       point: LatLng(hh.latitude, hh.longitude),
-                      child: GestureDetector(
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => HappyHourDetailsPage(happyHour: hh),
-                            ),
-                          );
-                        },
-                        child: const Icon(Icons.location_pin, color: Colors.red),
-                      ),
+                      child: const Icon(Icons.location_pin,
+                          color: Colors.red),
                     ))
                 .toList(),
           ),
