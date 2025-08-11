@@ -75,7 +75,7 @@ class HappyHour {
       happyHourStart: json['Happy_hour_start'] ?? '',
       happyHourEnd: json['Happy_hour_end'] ?? '',
       telephone: json['Telephone'] ?? '',
-      imageLink: json['image_link'] ?? '', //selectedImageLink,
+      imageLink: json['image_link'] ?? '',
       latitude: (json['latitude'] as num?)?.toDouble() ?? 0.0,
       longitude: (json['longitude'] as num?)?.toDouble() ?? 0.0,
     );
@@ -93,6 +93,69 @@ class _HappyHourListPageState extends State<HappyHourListPage> {
   List<HappyHour> happyHours = [];
   String? errorMessage;
 
+  // NEW: City dropdown
+  String? selectedCity;
+  final List<String> cities = [
+    'All',
+
+    // Thailand
+    'Bangkok',
+    'Chiang Mai',
+    'Phuket',
+    'Pattaya',
+
+    // USA
+    'New York',
+    'Los Angeles',
+    'Chicago',
+    'San Francisco',
+    'Miami',
+
+    // Europe
+    'London',
+    'Paris',
+    'Berlin',
+    'Rome',
+    'Madrid',
+    'Amsterdam',
+
+    // Middle East
+    'Dubai',
+    'Abu Dhabi',
+    'Doha',
+    'Riyadh',
+    'Jeddah',
+
+    // India
+    'Mumbai',
+    'Delhi',
+    'Bengaluru',
+    'Hyderabad',
+    'Chennai',
+    'Kolkata',
+
+    // Japan
+    'Tokyo',
+    'Osaka',
+    'Kyoto',
+    'Yokohama',
+    'Sapporo',
+
+    // Australia
+    'Sydney',
+    'Melbourne',
+    'Brisbane',
+    'Perth',
+    'Adelaide',
+
+    // New Zealand
+    'Auckland',
+    'Wellington',
+    'Christchurch',
+    'Queenstown'
+  ];
+
+
   @override
   void initState() {
     super.initState();
@@ -100,35 +163,52 @@ class _HappyHourListPageState extends State<HappyHourListPage> {
   }
 
   Future<void> fetchHappyHours() async {
-    try {
-      final response = await http
-          .get(Uri.parse(
-              'https://customercallsapp.com/prod/customercallsapp/happy_hours_api.php'))
-          .timeout(const Duration(seconds: 10));
+    const int timeoutSeconds = 30;
+    const int maxRetries = 2;
 
-      if (response.statusCode == 200) {
-        final List<dynamic> happyHoursJson = jsonDecode(response.body);
-        List<HappyHour> tempHappyHours = happyHoursJson
-            .map((json) => HappyHour.fromJson(json))
-            .toList();
+    // Build URL with optional city parameter
+    String baseUrl =
+        'https://customercallsapp.com/prod/customercallsapp/happy_hours_api.php';
+    if (selectedCity != null &&
+        selectedCity!.isNotEmpty &&
+        selectedCity != 'All') {
+      baseUrl += '?city=${Uri.encodeComponent(selectedCity!)}';
+    }
 
-        setState(() {
-          happyHours = tempHappyHours;
-          errorMessage = null;
-        });
-      } else {
-        setState(() {
-          errorMessage = 'Failed to load data: ${response.statusCode}';
-        });
+    for (int attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        final response = await http
+            .get(Uri.parse(baseUrl))
+            .timeout(Duration(seconds: timeoutSeconds));
+
+        if (response.statusCode == 200) {
+          final List<dynamic> happyHoursJson = jsonDecode(response.body);
+          List<HappyHour> tempHappyHours = happyHoursJson
+              .map((json) => HappyHour.fromJson(json))
+              .toList();
+
+          setState(() {
+            happyHours = tempHappyHours;
+            errorMessage = null;
+          });
+          return;
+        } else {
+          throw Exception('Failed to load data: ${response.statusCode}');
+        }
+      } catch (e) {
+        if (attempt == maxRetries) {
+          setState(() {
+            errorMessage = 'Error fetching data: $e';
+          });
+        } else {
+          debugPrint("Attempt $attempt failed, retrying...");
+          await Future.delayed(const Duration(seconds: 2));
+        }
       }
-    } catch (e) {
-      setState(() {
-        errorMessage = 'Error fetching data: $e';
-      });
     }
   }
 
-  @override
+ /* @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
@@ -150,19 +230,137 @@ class _HappyHourListPageState extends State<HappyHourListPage> {
           ),
         ],
       ),
-      body: errorMessage != null
-          ? Center(
-              child: Text(errorMessage!,
-                  style: const TextStyle(color: Colors.red)))
-          : happyHours.isEmpty
-              ? const Center(child: CircularProgressIndicator())
-              : ListView.builder(
-                  itemCount: happyHours.length,
-                  itemBuilder: (context, index) {
-                    return HappyHourCard(
-                        happyHour: happyHours[index], index: index);
+      body: Column(
+        children: [
+          // NEW: Dropdown
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: DropdownButton<String>(
+              value: selectedCity ?? 'All',
+              isExpanded: true,
+              items: cities.map((String city) {
+                return DropdownMenuItem<String>(
+                  value: city,
+                  child: Text(city),
+                );
+              }).toList(),
+              onChanged: (value) {
+                setState(() {
+                  selectedCity = value;
+                });
+                fetchHappyHours();
+              },
+            ),
+          ),
+          Expanded(
+            child: errorMessage != null
+                ? Center(
+                    child: Text(errorMessage!,
+                        style: const TextStyle(color: Colors.red)))
+                : happyHours.isEmpty
+                    ? const Center(child: CircularProgressIndicator())
+                    : ListView.builder(
+                        itemCount: happyHours.length,
+                        itemBuilder: (context, index) {
+                          return HappyHourCard(
+                              happyHour: happyHours[index], index: index);
+                        },
+                      ),
+          ),
+        ],
+      ),
+    );
+  } */
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Happy Hours', style: TextStyle(color: Colors.black)),
+        backgroundColor: Colors.white,
+        elevation: 2,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.map, color: Colors.black),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => MapPage(happyHours: happyHours),
+                ),
+              );
+            },
+          ),
+        ],
+      ),
+      body: Column(
+        children: [
+          // NEW: Styled Dropdown
+          Padding(
+            padding: const EdgeInsets.all(12.0),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.grey.shade300),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.grey.withOpacity(0.15),
+                    blurRadius: 8,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: DropdownButtonHideUnderline(
+                child: DropdownButton<String>(
+                  value: selectedCity ?? 'All',
+                  isExpanded: true,
+                  icon: const Icon(Icons.arrow_drop_down, color: Colors.black54),
+                  style: const TextStyle(
+                    color: Colors.black87,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                  ),
+                  items: cities.map((String city) {
+                    return DropdownMenuItem<String>(
+                      value: city,
+                      child: Row(
+                        children: [
+                          const Icon(Icons.location_city, color: Colors.black54, size: 18),
+                          const SizedBox(width: 8),
+                          Text(city),
+                        ],
+                      ),
+                    );
+                  }).toList(),
+                  onChanged: (value) {
+                    setState(() {
+                      selectedCity = value;
+                    });
+                    fetchHappyHours();
                   },
                 ),
+              ),
+            ),
+          ),
+          Expanded(
+            child: errorMessage != null
+                ? Center(
+                    child: Text(errorMessage!,
+                        style: const TextStyle(color: Colors.red)))
+                : happyHours.isEmpty
+                    ? const Center(child: CircularProgressIndicator())
+                    : ListView.builder(
+                        itemCount: happyHours.length,
+                        itemBuilder: (context, index) {
+                          return HappyHourCard(
+                              happyHour: happyHours[index], index: index);
+                        },
+                      ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -198,7 +396,6 @@ class HappyHourCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Image with gradient overlay and text
             ClipRRect(
               borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
               child: Stack(
@@ -249,13 +446,11 @@ class HappyHourCard extends StatelessWidget {
                 ],
               ),
             ),
-
             Padding(
               padding: EdgeInsets.all(isSmallScreen ? 12 : 20),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Address
                   Row(
                     children: [
                       const Icon(Icons.location_on,
@@ -273,8 +468,6 @@ class HappyHourCard extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: 8),
-
-                  // Happy hour time
                   Row(
                     children: [
                       const Icon(Icons.access_time,

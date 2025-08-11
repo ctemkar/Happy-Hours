@@ -1,0 +1,82 @@
+<?php
+header("Access-Control-Allow-Origin: *");
+header("Access-Control-Allow-Methods: GET, POST");
+header("Access-Control-Allow-Headers: Content-Type");
+header("Content-Type: application/json; charset=UTF-8");
+
+// Enable gzip compression if possible
+if (!ob_start("ob_gzhandler")) {
+    ob_start(); // fallback if gzhandler not available
+}
+
+// Increase execution time just in case
+set_time_limit(60);
+
+// Database connection
+$host = "mysql2-p2.ezhostingserver.com";
+$username = "sanjay";
+$password = "BU@R9gr2971{";
+$database = "interview_helper";
+
+// Persistent connection for faster response
+$conn = new mysqli('p:' . $host, $username, $password, $database);
+
+// Logging setup
+$logFile = __DIR__ . "/happy_hours_api_log.txt";
+function logMessage($msg) {
+    global $logFile;
+    file_put_contents($logFile, "[" . date("Y-m-d H:i:s") . "] $msg\n", FILE_APPEND);
+}
+
+// Start timing
+$startTime = microtime(true);
+
+// Check connection
+if ($conn->connect_error) {
+    logMessage("DB Connection failed: " . $conn->connect_error);
+    http_response_code(500);
+    echo json_encode(["error" => "Database connection failed"]);
+    exit;
+}
+
+// Read optional city filter
+$city = isset($_GET['city']) ? trim($_GET['city']) : "";
+
+// Build query
+$sql = "SELECT * FROM happy_hours_bangkok";
+if (!empty($city)) {
+    $safeCity = $conn->real_escape_string($city);
+    $sql .= " WHERE Address LIKE '%$safeCity%'";
+}
+
+$result = $conn->query($sql);
+
+if ($result === false) {
+    logMessage("Query failed: " . $conn->error);
+    http_response_code(500);
+    echo json_encode(["error" => "Query failed"]);
+    exit;
+}
+
+// Process rows
+$happyHours = [];
+while ($row = $result->fetch_assoc()) {
+    $row['latitude'] = isset($row['latitude']) ? (float)$row['latitude'] : 13.7563;
+    $row['longitude'] = isset($row['longitude']) ? (float)$row['longitude'] : 100.5018;
+    $happyHours[] = $row;
+}
+
+// Log execution time
+$duration = round(microtime(true) - $startTime, 4);
+logMessage("API executed in {$duration} seconds | City: " . ($city ?: 'All') . " | Records fetched: " . count($happyHours));
+
+if ($duration > 3) { // track slow runs
+    logMessage("⚠️ Slow run detected");
+}
+
+echo json_encode($happyHours);
+
+// Close connection & flush buffer
+$conn->close();
+ob_end_flush();
+?>
