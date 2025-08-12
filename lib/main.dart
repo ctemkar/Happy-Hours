@@ -168,7 +168,7 @@ class _HappyHourListPageState extends State<HappyHourListPage> {
 
     // Build URL with optional city parameter
     String baseUrl =
-        'https://customercallsapp.com/prod/customercallsapp/happy_hours_api.php';
+        'https://customercallsapp.com/prod/customercallsapp/happy_hours_global_api.php';
     if (selectedCity != null &&
         selectedCity!.isNotEmpty &&
         selectedCity != 'All') {
@@ -272,7 +272,7 @@ class _HappyHourListPageState extends State<HappyHourListPage> {
     );
   } */
 
-  @override
+  /*@override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
@@ -342,6 +342,82 @@ class _HappyHourListPageState extends State<HappyHourListPage> {
                   },
                 ),
               ),
+            ),
+          ),
+          Expanded(
+            child: errorMessage != null
+                ? Center(
+                    child: Text(errorMessage!,
+                        style: const TextStyle(color: Colors.red)))
+                : happyHours.isEmpty
+                    ? const Center(child: CircularProgressIndicator())
+                    : ListView.builder(
+                        itemCount: happyHours.length,
+                        itemBuilder: (context, index) {
+                          return HappyHourCard(
+                              happyHour: happyHours[index], index: index);
+                        },
+                      ),
+          ),
+        ],
+      ),
+    );
+  } */
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Happy Hours', style: TextStyle(color: Colors.black)),
+        backgroundColor: Colors.white,
+        elevation: 2,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.map, color: Colors.black),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => MapPage(happyHours: happyHours),
+                ),
+              );
+            },
+          ),
+        ],
+      ),
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(12.0),
+            child: Autocomplete<String>(
+              optionsBuilder: (TextEditingValue textEditingValue) {
+                if (textEditingValue.text.isEmpty) {
+                  return cities; // show all if empty
+                }
+                return cities.where((city) => city.toLowerCase()
+                    .contains(textEditingValue.text.toLowerCase()));
+              },
+              onSelected: (String selection) {
+                setState(() {
+                  selectedCity = selection;
+                });
+                fetchHappyHours();
+              },
+              fieldViewBuilder: (context, controller, focusNode, onEditingComplete) {
+                controller.text = selectedCity ?? 'All';
+                return TextField(
+                  controller: controller,
+                  focusNode: focusNode,
+                  onEditingComplete: onEditingComplete,
+                  decoration: InputDecoration(
+                    labelText: 'Select City',
+                    prefixIcon: const Icon(Icons.location_city),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                );
+              },
             ),
           ),
           Expanded(
