@@ -1,5 +1,5 @@
 name: happy_hours_app
-description: "A new Flutter project."
+description: "A Flutter app for discovering local businesses with happy hour deals and spa/wellness services."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
@@ -30,9 +30,8 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  http: ^1.2.2
-  flutter_map: ^7.0.2
-  latlong2: ^0.9.1
+  flutter_map: ^8.2.1      # FREE OpenStreetMap
+  latlong2: ^0.9.1         # FREE coordinate library
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
