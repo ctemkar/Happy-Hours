@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'screens/happy_hours_screen_change.dart';
+import 'screens/happy_hours_screen.dart';
 
 void main() {
   runApp(const HappyHoursApp());

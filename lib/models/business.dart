@@ -28,7 +28,7 @@ class Discount {
   });
 }
 
-class Business {
+class HappyHourPlace {
   final String id;
   final String name;
   final String description;
@@ -40,7 +40,7 @@ class Business {
   final bool isVerified;
   final Discount? currentDiscount;
 
-  Business({
+  HappyHourPlace({
     required this.id,
     required this.name,
     required this.description,
