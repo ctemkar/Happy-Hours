@@ -25,6 +25,7 @@ class _HappyHoursScreenState extends State<HappyHoursScreen> {
   List<HappyHourPlace> allBusinesses = [];
   final MapController _mapController = MapController();
   final TextEditingController _locationController = TextEditingController();
+  final TextEditingController _businessController = TextEditingController();
 
   final List<String> autosuggestCities = [
     'Bangkok',
@@ -39,17 +40,8 @@ class _HappyHoursScreenState extends State<HappyHoursScreen> {
   ];
 
   final List<String> businessCategories = [
-    'ALL',
-    'Restaurant',
-    'Bar',
-    'Cafe',
-    'Fast Food',
-    'Spa',
-    'Massage',
-    'Night Club',
+    'All', 'Restaurant', 'Bar', 'Cafe', 'Fast Food', 'Spa', 'Massage'
   ];
-
-  String selectedCategory = 'ALL';
 
   @override
   void initState() {
@@ -60,6 +52,7 @@ class _HappyHoursScreenState extends State<HappyHoursScreen> {
   @override
   void dispose() {
     _locationController.dispose();
+    _businessController.dispose();
     super.dispose();
   }
 
@@ -90,8 +83,7 @@ class _HappyHoursScreenState extends State<HappyHoursScreen> {
         return;
       }
 
-      Position position = await Geolocator.getCurrentPosition(
-          desiredAccuracy: LocationAccuracy.high);
+      Position position = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
 
       final cityCoordinates = {
         'Bangkok': LatLng(13.7563, 100.5018),
@@ -129,8 +121,7 @@ class _HappyHoursScreenState extends State<HappyHoursScreen> {
       final userLatLng = LatLng(position.latitude, position.longitude);
 
       cityCoordinates.forEach((city, latLng) {
-        final distance =
-            Distance().as(LengthUnit.Kilometer, userLatLng, latLng);
+        final distance = Distance().as(LengthUnit.Kilometer, userLatLng, latLng);
         if (distance < minDistance) {
           minDistance = distance;
           nearestCity = city;
@@ -163,8 +154,7 @@ class _HappyHoursScreenState extends State<HappyHoursScreen> {
       if (allBusinesses.isNotEmpty) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
           _mapController.move(
-            LatLng(allBusinesses.first.latitude,
-                allBusinesses.first.longitude),
+            LatLng(allBusinesses.first.latitude, allBusinesses.first.longitude),
             12.0,
           );
         });
@@ -275,14 +265,11 @@ class _HappyHoursScreenState extends State<HappyHoursScreen> {
                           padding: const EdgeInsets.all(16),
                           child: Column(
                             children: [
-                              // Location input
                               TypeAheadField<String>(
-                                textFieldConfiguration:
-                                    TextFieldConfiguration(
+                                textFieldConfiguration: TextFieldConfiguration(
                                   controller: _locationController,
                                   decoration: InputDecoration(
-                                    prefixIcon: const Icon(Icons.location_on,
-                                        color: Colors.blue),
+                                    prefixIcon: const Icon(Icons.location_on, color: Colors.blue),
                                     hintText: 'Your current location',
                                     border: OutlineInputBorder(
                                       borderRadius: BorderRadius.circular(8),
@@ -294,14 +281,11 @@ class _HappyHoursScreenState extends State<HappyHoursScreen> {
                                 ),
                                 suggestionsCallback: (pattern) {
                                   return autosuggestCities.where((city) =>
-                                      city.toLowerCase().contains(
-                                          pattern.toLowerCase()));
+                                      city.toLowerCase().contains(pattern.toLowerCase()));
                                 },
                                 itemBuilder: (context, String suggestion) {
                                   return ListTile(
-                                    title: Text(suggestion,
-                                        style: const TextStyle(
-                                            color: Colors.black)),
+                                    title: Text(suggestion, style: const TextStyle(color: Colors.black)),
                                     tileColor: Colors.white,
                                   );
                                 },
@@ -309,43 +293,36 @@ class _HappyHoursScreenState extends State<HappyHoursScreen> {
                                   _setLocationAndFetch(suggestion);
                                 },
                               ),
-                              const SizedBox(height: 12),
-
-                              // Business category buttons
-                              SizedBox(
-                                height: 40,
-                                child: ListView.separated(
-                                  scrollDirection: Axis.horizontal,
-                                  itemCount: businessCategories.length,
-                                  separatorBuilder: (_, __) =>
-                                      const SizedBox(width: 8),
-                                  itemBuilder: (context, index) {
-                                    final category =
-                                        businessCategories[index];
-                                    final isSelected =
-                                        selectedCategory == category;
-
-                                    return ChoiceChip(
-                                      label: Text(category),
-                                      selected: isSelected,
-                                      onSelected: (_) {
-                                        setState(() {
-                                          selectedCategory = category;
-                                        });
-                                      },
-                                      selectedColor: Colors.blue,
-                                      backgroundColor: Colors.grey[200],
-                                      labelStyle: TextStyle(
-                                        color: isSelected
-                                            ? Colors.white
-                                            : Colors.black,
-                                        fontWeight: isSelected
-                                            ? FontWeight.bold
-                                            : FontWeight.normal,
-                                      ),
-                                    );
-                                  },
+                              const SizedBox(height: 8),
+                              TypeAheadField<String>(
+                                textFieldConfiguration: TextFieldConfiguration(
+                                  controller: _businessController,
+                                  decoration: InputDecoration(
+                                    prefixIcon: const Icon(Icons.search, color: Colors.blue),
+                                    hintText: 'Search businesses...',
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(8),
+                                      borderSide: BorderSide.none,
+                                    ),
+                                    filled: true,
+                                    fillColor: Colors.white,
+                                  ),
                                 ),
+                                suggestionsCallback: (pattern) {
+                                  return businessCategories.where((category) =>
+                                      category.toLowerCase().contains(pattern.toLowerCase()));
+                                },
+                                itemBuilder: (context, String suggestion) {
+                                  return ListTile(
+                                    title: Text(suggestion, style: const TextStyle(color: Colors.black)),
+                                    tileColor: Colors.white,
+                                  );
+                                },
+                                onSuggestionSelected: (String suggestion) {
+                                  setState(() {
+                                    _businessController.text = suggestion;
+                                  });
+                                },
                               ),
                             ],
                           ),
@@ -357,8 +334,7 @@ class _HappyHoursScreenState extends State<HappyHoursScreen> {
                                 mapController: _mapController,
                                 options: MapOptions(
                                   initialCenter: allBusinesses.isNotEmpty
-                                      ? LatLng(allBusinesses.first.latitude,
-                                          allBusinesses.first.longitude)
+                                      ? LatLng(allBusinesses.first.latitude, allBusinesses.first.longitude)
                                       : LatLng(0, 0),
                                   initialZoom: 12.0,
                                   minZoom: 3.0,
@@ -366,10 +342,8 @@ class _HappyHoursScreenState extends State<HappyHoursScreen> {
                                 ),
                                 children: [
                                   TileLayer(
-                                    urlTemplate:
-                                        'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                                    userAgentPackageName:
-                                        'com.example.happy_hours_app',
+                                    urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                                    userAgentPackageName: 'com.example.happy_hours_app',
                                     maxZoom: 19,
                                   ),
                                   MarkerLayer(
@@ -382,19 +356,16 @@ class _HappyHoursScreenState extends State<HappyHoursScreen> {
                                     child: Card(
                                       elevation: 6,
                                       shape: RoundedRectangleBorder(
-                                        borderRadius:
-                                            BorderRadius.circular(20),
+                                        borderRadius: BorderRadius.circular(20),
                                       ),
                                       margin: const EdgeInsets.all(20),
                                       child: Padding(
-                                        padding:
-                                            const EdgeInsets.all(24.0),
+                                        padding: const EdgeInsets.all(24.0),
                                         child: Column(
                                           mainAxisSize: MainAxisSize.min,
                                           children: [
                                             const Icon(Icons.hourglass_empty,
-                                                size: 60,
-                                                color: Colors.orangeAccent),
+                                                size: 60, color: Colors.orangeAccent),
                                             const SizedBox(height: 16),
                                             const Text(
                                               "No Happy Hours Data Available",
@@ -419,29 +390,22 @@ class _HappyHoursScreenState extends State<HappyHoursScreen> {
                                     ),
                                   )
                                 : ListView.builder(
-                                    padding: const EdgeInsets.symmetric(
-                                        horizontal: 16),
+                                    padding: const EdgeInsets.symmetric(horizontal: 16),
                                     itemCount: allBusinesses.length,
                                     itemBuilder: (context, index) {
                                       final business = allBusinesses[index];
-                                      final isBookmarked =
-                                          bookmarkedPlaces
-                                              .contains(business.id);
+                                      final isBookmarked = bookmarkedPlaces.contains(business.id);
 
-                                      // TODO: you can filter list here by selectedCategory if needed
                                       return BusinessCard(
                                         business: business,
                                         isBookmarked: isBookmarked,
-                                        onTap: () =>
-                                            _openBusinessDetails(business),
+                                        onTap: () => _openBusinessDetails(business),
                                         onBookmarkTap: () {
                                           setState(() {
                                             if (isBookmarked) {
-                                              bookmarkedPlaces
-                                                  .remove(business.id);
+                                              bookmarkedPlaces.remove(business.id);
                                             } else {
-                                              bookmarkedPlaces
-                                                  .add(business.id);
+                                              bookmarkedPlaces.add(business.id);
                                             }
                                           });
                                         },
